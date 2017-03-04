@@ -20,6 +20,31 @@ void Renderer::Init(Scene* scene)
     mShaders.SetPreambleFile("preamble.glsl");
 
     mSceneSP = mShaders.AddProgramFromExts({ "scene.vert", "scene.frag" });
+
+	// Create shadow map depth texture
+	glGenTextures(1, &mShadowDepthTO);
+	glBindTexture(GL_TEXTURE_2D, mShadowDepthTO);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, kShadowMapResolution,
+		kShadowMapResolution, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+	const float kShadowBorderDepth[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, kShadowBorderDepth);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+	// Attach shadowmap depth texture to framebuffer
+	glGenFramebuffers(1, &mShadowFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, mShadowFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, mShadowDepthTO, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	// Create shader for shadow map
+	mShadowSP = mShaders.AddProgramFromExts({ "shadow.vert", "shadow.frag" });
+
 }
 
 void Renderer::Resize(int width, int height)
@@ -71,6 +96,77 @@ void Renderer::Render()
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
+
+
+
+	// First pass: Render the shadow map
+	glUseProgram(*mShadowSP);
+	glBindFramebuffer(GL_FRAMEBUFFER, mShadowFBO);
+	glClearDepth(1.0f);
+	glClear(GL_DEPTH_BUFFER_BIT);
+	glViewport(0, 0, kShadowMapResolution, kShadowMapResolution);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_POLYGON_OFFSET_FILL);
+	
+	
+	
+	// TODO: Use this to fix z-fighting??
+	//glPolygonOffset(mShadowSlopeScaleBias, mShadowDepthBias);
+
+
+	const Light& mainLight = mScene->MainLight;
+
+	glm::vec3 position = mainLight.Position;
+	glm::vec3 up = mainLight.Up;
+
+	glm::mat4 worldView = glm::lookAt(position, position + mainLight.Direction, up);
+	glm::mat4 viewProjection = glm::perspective(mainLight.FovY, (float)mBackbufferWidth / mBackbufferHeight, 0.01f, 100.0f);
+	glm::mat4 worldProjection = viewProjection * worldView;
+
+	GLint SCENE_MODELWORLD_UNIFORM_LOCATION = glGetUniformLocation(*mSceneSP, "ModelWorld");
+	GLint SCENE_NORMAL_MODELWORLD_UNIFORM_LOCATION = glGetUniformLocation(*mSceneSP, "Normal_ModelWorld");
+	GLint SCENE_MODELVIEWPROJECTION_UNIFORM_LOCATION = glGetUniformLocation(*mSceneSP, "ModelViewProjection");
+
+
+	for (uint32_t instanceID : mScene->Instances)
+	{
+		// TODO: Draw every object in the scene,
+		// the same way as the scene rendering pass, but you don't need any material properties.
+		// One major different is your viewprojection matrix is now based on the light,
+		// rather than the camera.
+
+		const Instance* instance = &mScene->Instances[instanceID];
+		const Mesh* mesh = &mScene->Meshes[instance->MeshID];
+		const Transform* transform = &mScene->Transforms[instance->TransformID];
+
+		// The absolute transform is now calculated in the simulation update function
+		glm::mat4 modelWorld = transform->absoluteTransform;
+		glm::mat3 normal_ModelWorld = glm::mat3(transpose(inverse(modelWorld)));
+		glm::mat4 modelViewProjection = worldProjection * modelWorld;
+
+		glProgramUniformMatrix4fv(*mSceneSP, SCENE_MODELWORLD_UNIFORM_LOCATION, 1, GL_FALSE, value_ptr(modelWorld));
+		glProgramUniformMatrix3fv(*mSceneSP, SCENE_NORMAL_MODELWORLD_UNIFORM_LOCATION, 1, GL_FALSE, value_ptr(normal_ModelWorld));
+		glProgramUniformMatrix4fv(*mSceneSP, SCENE_MODELVIEWPROJECTION_UNIFORM_LOCATION, 1, GL_FALSE, value_ptr(modelViewProjection));
+
+		glBindVertexArray(mesh->MeshVAO);
+		for (size_t meshDrawIdx = 0; meshDrawIdx < mesh->DrawCommands.size(); meshDrawIdx++)
+		{
+			const GLDrawElementsIndirectCommand* drawCmd = &mesh->DrawCommands[meshDrawIdx];
+
+			glDrawElementsBaseVertex(GL_TRIANGLES, drawCmd->count, GL_UNSIGNED_INT, (GLvoid*)(sizeof(GLuint) * drawCmd->firstIndex), drawCmd->baseVertex);
+		}
+		glBindVertexArray(0);
+	}
+	glPolygonOffset(0.0f, 0.0f);
+	glDisable(GL_POLYGON_OFFSET_FILL);
+	glDisable(GL_DEPTH_TEST);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glUseProgram(0);
+
+
+
+
+
     // render scene
     if (*mSceneSP)
     {
@@ -116,6 +212,33 @@ void Renderer::Render()
 
             glm::mat4 modelViewProjection = worldProjection * modelWorld;
 
+
+
+
+
+
+
+
+			const Light& mainLight = mScene->MainLight;
+			glm::vec3 lightPos = mainLight.Position;
+			glm::vec3 up = mainLight.Up;
+			glm::mat4 lightWorldView = glm::lookAt(lightPos, lightPos + mainLight.Direction, up);
+			glm::mat4 lightViewProjection = glm::perspective(mainLight.FovY, 1.0f, 0.01f, 100.0f);
+			glm::mat4 lightWorldProjection = lightViewProjection * lightWorldView;
+
+
+			glm::mat4 lightOffsetMatrix = glm::mat4(
+				0.5f, 0.0f, 0.0f, 0.0f,
+				0.0f, 0.5f, 0.0f, 0.0f,
+				0.0f, 0.0f, 0.5f, 0.0f,
+				0.5f, 0.5f, 0.5f, 1.0f);
+			glm::mat4 lightMatrix = lightOffsetMatrix * lightWorldProjection;
+
+
+
+
+
+
             glProgramUniformMatrix4fv(*mSceneSP, SCENE_MODELWORLD_UNIFORM_LOCATION, 1, GL_FALSE, value_ptr(modelWorld));
             glProgramUniformMatrix3fv(*mSceneSP, SCENE_NORMAL_MODELWORLD_UNIFORM_LOCATION, 1, GL_FALSE, value_ptr(normal_ModelWorld));
             glProgramUniformMatrix4fv(*mSceneSP, SCENE_MODELVIEWPROJECTION_UNIFORM_LOCATION, 1, GL_FALSE, value_ptr(modelViewProjection));
@@ -125,6 +248,20 @@ void Renderer::Render()
             {
                 const GLDrawElementsIndirectCommand* drawCmd = &mesh->DrawCommands[meshDrawIdx];
                 const Material* material = &mScene->Materials[mesh->MaterialIDs[meshDrawIdx]];
+
+
+
+
+
+				glActiveTexture(GL_TEXTURE0 + SCENE_SHADOW_MAP_TEXTURE_BINDING);
+				GLint SCENE_SHADOW_MAP_UNIFORM_LOCATION = glGetUniformLocation(*mSceneSP, "ShadowMap");
+				glUniform1i(SCENE_SHADOW_MAP_UNIFORM_LOCATION, SCENE_SHADOW_MAP_TEXTURE_BINDING);
+				glBindTexture(GL_TEXTURE_2D, mShadowDepthTO);
+
+
+
+
+
 
                 glActiveTexture(GL_TEXTURE0 + SCENE_DIFFUSE_MAP_TEXTURE_BINDING);
                 glProgramUniform1i(*mSceneSP, SCENE_DIFFUSE_MAP_UNIFORM_LOCATION, SCENE_DIFFUSE_MAP_TEXTURE_BINDING);

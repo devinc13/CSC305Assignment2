@@ -14,12 +14,17 @@ class Renderer
     ShaderSet mShaders;
 
     GLuint* mSceneSP;
+	GLuint* mShadowSP;
 
     int mBackbufferWidth;
     int mBackbufferHeight;
     GLuint mBackbufferFBO;
     GLuint mBackbufferColorTO;
     GLuint mBackbufferDepthTO;
+
+	GLuint mShadowDepthTO;
+	GLuint mShadowFBO;
+	int kShadowMapResolution = 1024;
 
 public:
     void Init(Scene* scene);

@@ -12,10 +12,13 @@ in vec3 vertex_color;
 out vec3 normal;
 out vec3 vertPos;
 out vec2 fragment_texcoord;
+out vec4 shadowMapCoord;
 
 uniform mat4 ModelWorld;
 uniform mat4 ModelViewProjection;
 uniform mat3 Normal_ModelWorld;
+uniform mat4 lightMatrix;
+
 
 void main()
 {
@@ -23,4 +26,6 @@ void main()
     vertPos = vec3(ModelWorld * Position);
 	normal = normalize(Normal_ModelWorld * Normal);
 	fragment_texcoord = TexCoord;
+
+	shadowMapCoord = lightMatrix * Position;
 }

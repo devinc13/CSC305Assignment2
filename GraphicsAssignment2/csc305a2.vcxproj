@@ -48,6 +48,8 @@
     <None Include="preamble.glsl" />
     <None Include="scene.frag" />
     <None Include="scene.vert" />
+    <None Include="shadow.frag" />
+    <None Include="shadow.vert" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{DDE7B679-F0A1-45CD-918D-4EE95F323DC3}</ProjectGuid>

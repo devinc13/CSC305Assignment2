@@ -7,10 +7,12 @@ uniform float Shininess;
 
 uniform int HasDiffuseMap;
 uniform sampler2D DiffuseMap;
+uniform sampler2DShadow ShadowMap;
 
 in vec3 normal;
 in vec3 vertPos;
 in vec2 fragment_texcoord;
+in vec4 shadowMapCoord;
 
 out vec4 FragColor;
 
@@ -42,5 +44,6 @@ void main()
 	float screenGamma = 2.2;
 	vec3 colorGammaCorrected = pow(colorLinear, vec3(1.0 / screenGamma));
 
-	FragColor = vec4(colorGammaCorrected, 1.0);
+	float visibility = textureProj(ShadowMap, shadowMapCoord);
+	FragColor = vec4(colorGammaCorrected * visibility, 1.0);
 }

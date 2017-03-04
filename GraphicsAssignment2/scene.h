@@ -49,7 +49,7 @@ struct Transform
     glm::quat Rotation;
     glm::vec3 Translation;
 	glm::mat4 absoluteTransform;
-	int ParentID;
+	uint32_t ParentID;
 };
 
 struct Instance
@@ -69,6 +69,15 @@ struct Camera
     float FovY;
 };
 
+struct Light
+{
+	glm::vec3 Position;
+	glm::vec3 Direction;
+	glm::vec3 Up;
+
+	float FovY;
+};
+
 class Scene
 {
 public:
@@ -79,6 +88,8 @@ public:
     packed_freelist<Instance> Instances;
 
     Camera MainCamera;
+
+	Light MainLight;
 
     void Init();
 };

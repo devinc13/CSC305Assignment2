@@ -116,5 +116,11 @@
     <None Include="preamble.glsl">
       <Filter>shaders</Filter>
     </None>
+    <None Include="shadow.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="shadow.vert">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
 </Project>
