@@ -26,6 +26,12 @@ class Renderer
 	GLuint mShadowFBO;
 	int kShadowMapResolution = 1024;
 
+	float mShadowSlopeScaleBias = 0.0f;
+	float mShadowDepthBias = 0.0f;
+	bool mShowDepthVis = true;
+	GLuint* mDepthVisSP;
+	GLuint mNullVAO;
+
 public:
     void Init(Scene* scene);
     void Resize(int width, int height);

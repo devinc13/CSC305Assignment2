@@ -45,6 +45,11 @@ void Renderer::Init(Scene* scene)
 	// Create shader for shadow map
 	mShadowSP = mShaders.AddProgramFromExts({ "shadow.vert", "shadow.frag" });
 
+	// Shadow Map debugger
+	mDepthVisSP = mShaders.AddProgramFromExts({ "depthvis.vert", "depthvis.frag" });
+	glGenVertexArrays(1, &mNullVAO);
+	glBindVertexArray(mNullVAO);
+	glBindVertexArray(0);
 }
 
 void Renderer::Resize(int width, int height)
@@ -85,6 +90,14 @@ void Renderer::Render()
 {
     mShaders.UpdatePrograms();
 
+	if (ImGui::Begin("Renderer Options", 0, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::Checkbox("Show shadow map", &mShowDepthVis);
+		ImGui::SliderFloat("Slope Scale Bias", &mShadowSlopeScaleBias, 0.0f, 10.0f);
+		ImGui::SliderFloat("Depth Bias", &mShadowDepthBias, 0.0f, 1000.0f);
+	}
+	ImGui::End();
+
     // Clear last frame
     {
         glBindFramebuffer(GL_FRAMEBUFFER, mBackbufferFBO);
@@ -107,12 +120,7 @@ void Renderer::Render()
 	glViewport(0, 0, kShadowMapResolution, kShadowMapResolution);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_POLYGON_OFFSET_FILL);
-	
-	
-	
-	// TODO: Use this to fix z-fighting??
-	//glPolygonOffset(mShadowSlopeScaleBias, mShadowDepthBias);
-
+	glPolygonOffset(mShadowSlopeScaleBias, mShadowDepthBias);
 
 	const Light& mainLight = mScene->MainLight;
 
@@ -256,7 +264,8 @@ void Renderer::Render()
 				glActiveTexture(GL_TEXTURE0 + SCENE_SHADOW_MAP_TEXTURE_BINDING);
 				GLint SCENE_SHADOW_MAP_UNIFORM_LOCATION = glGetUniformLocation(*mSceneSP, "ShadowMap");
 				glUniform1i(SCENE_SHADOW_MAP_UNIFORM_LOCATION, SCENE_SHADOW_MAP_TEXTURE_BINDING);
-				glBindTexture(GL_TEXTURE_2D, mShadowDepthTO);
+				glBindTexture(GL_TEXTURE_2D, mShadowDepthTO);
+
 
 
 
@@ -292,6 +301,46 @@ void Renderer::Render()
 
         glUseProgram(0);
     }
+
+	if (mShowDepthVis && *mDepthVisSP)
+	{
+		glUseProgram(*mDepthVisSP);
+		GLint DEPTHVIS_TRANSFORM2D_UNIFORM_LOCATION = glGetUniformLocation(*mDepthVisSP,
+			"Transform2D");
+		GLint DEPTHVIS_ORTHO_PROJECTION_UNIFORM_LOCATION = glGetUniformLocation(*mDepthVisSP,
+			"OrthoProjection");
+		GLint DEPTHVIS_DEPTH_MAP_UNIFORM_LOCATION = glGetUniformLocation(*mDepthVisSP,
+			"DepthMap");
+		glBindFramebuffer(GL_FRAMEBUFFER, mBackbufferFBO);
+		glViewport(0, 0, mBackbufferWidth, mBackbufferHeight);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		float depthBufferVisSize = 256.0f;
+		glm::mat4 transform2D =
+			glm::translate(glm::vec3((float)(mBackbufferWidth - depthBufferVisSize),
+			(float)(mBackbufferHeight - depthBufferVisSize), 0.0f)) *
+			glm::scale(glm::vec3(depthBufferVisSize, depthBufferVisSize, 0.0f));
+		glProgramUniformMatrix4fv(*mDepthVisSP, DEPTHVIS_TRANSFORM2D_UNIFORM_LOCATION, 1,
+			GL_FALSE, value_ptr(transform2D));
+		glm::mat4 ortho = glm::ortho(0.0f, (float)mBackbufferWidth, 0.0f,
+			(float)mBackbufferHeight);
+		glUniformMatrix4fv(DEPTHVIS_ORTHO_PROJECTION_UNIFORM_LOCATION, 1, GL_FALSE,
+			value_ptr(ortho));
+		glActiveTexture(GL_TEXTURE0 + DEPTHVIS_DEPTH_MAP_TEXTURE_BINDING);
+		glUniform1i(DEPTHVIS_DEPTH_MAP_UNIFORM_LOCATION, DEPTHVIS_DEPTH_MAP_TEXTURE_BINDING);
+		glBindTexture(GL_TEXTURE_2D, mShadowDepthTO);
+		// need to disable depth comparison before sampling with non-shadow sampler
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+		glBindVertexArray(mNullVAO);
+		glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+		glBindVertexArray(0);
+		// re-enable depth comparison
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+		glDisable(GL_BLEND);
+		glBlendFunc(GL_ONE, GL_ZERO);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glUseProgram(0);
+	}
 
     // Render ImGui
     {

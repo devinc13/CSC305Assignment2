@@ -1,3 +1,16 @@
-﻿  renderer.cpp
+﻿  tiny_obj_loader.cc
+  simulation.cpp
+  shaderset.cpp
+  scene.cpp
+  renderer.cpp
+  opengl.cpp
+  mysdl_dpi.cpp
+  main.cpp
+  imgui_impl_sdl_gl3.cpp
+  imgui_draw.cpp
+  imgui_demo.cpp
+  imgui.cpp
+  Generating Code...
+  stb_image.c
   csc305a2.vcxproj -> E:\Development\CSC305\Assignment2\GraphicsAssignment2\x64\Debug\csc305a2.exe
   csc305a2.vcxproj -> E:\Development\CSC305\Assignment2\GraphicsAssignment2\x64\Debug\csc305a2.pdb (Partial PDB)

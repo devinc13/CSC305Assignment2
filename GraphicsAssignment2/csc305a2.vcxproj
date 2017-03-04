@@ -45,6 +45,8 @@
     <ClInclude Include="tiny_obj_loader.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="depthvis.frag" />
+    <None Include="depthvis.vert" />
     <None Include="preamble.glsl" />
     <None Include="scene.frag" />
     <None Include="scene.vert" />
