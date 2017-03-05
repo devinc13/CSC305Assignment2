@@ -93,6 +93,21 @@ void Simulation::Init(Scene* scene)
         AddMeshInstance(mScene, loadedMeshID, nullptr);
     }
 
+	loadedMeshIDs.clear();
+	LoadMeshesFromFile(mScene, "assets/sponza/sponza.obj", &loadedMeshIDs);
+	for (uint32_t loadedMeshID : loadedMeshIDs)
+	{
+		if (scene->Meshes[loadedMeshID].Name == "sponza_04")
+		{
+			continue;
+		}
+
+		uint32_t newInstanceID;
+		AddMeshInstance(mScene, loadedMeshID, &newInstanceID);
+		uint32_t newTransformID = scene->Instances[newInstanceID].TransformID;
+		scene->Transforms[newTransformID].Scale = glm::vec3(1.0f / 50.0f);
+	}
+
     Camera mainCamera;
     mainCamera.Eye = glm::vec3(5.0f);
     glm::vec3 target = glm::vec3(0.0f);
@@ -181,11 +196,11 @@ void Simulation::Update(float deltaTime)
 	}
 
 
-
-	if (ImGui::Begin("Example GUI Window"))
+	Light& mainLight = mScene->MainLight;
+	if (ImGui::Begin("Mouse and Light Position"))
 	{
 		ImGui::Text("Mouse Pos: (%d, %d)", mx, my);
-		//ImGui::Text("Delta: (%f)", delta);
+		ImGui::SliderFloat3("Light position", value_ptr(mainLight.Position), -40.0f, 40.0f);
 	}
 	ImGui::End();
 }

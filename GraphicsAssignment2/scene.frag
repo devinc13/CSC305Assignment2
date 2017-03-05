@@ -45,5 +45,5 @@ void main()
 	vec3 colorGammaCorrected = pow(colorLinear, vec3(1.0 / screenGamma));
 
 	float visibility = textureProj(ShadowMap, shadowMapCoord);
-	FragColor = vec4(colorGammaCorrected * visibility +  Ambient * ambientColor, 1.0);
+	FragColor = vec4(colorGammaCorrected * visibility +  Ambient * ambientColor * colorGammaCorrected, 1.0);
 }
