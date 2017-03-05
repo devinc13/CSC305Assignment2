@@ -16,7 +16,7 @@ in vec4 shadowMapCoord;
 
 out vec4 FragColor;
 
-const vec3 ambientColor = vec3(0.0, 0.0, 0.1);
+const vec3 ambientColor = vec3(0.1, 0.1, 0.1);
 
 void main()
 {
@@ -39,11 +39,11 @@ void main()
 		diffuseMap = Diffuse;
 	}
 	
-	vec3 colorLinear = Ambient * ambientColor + lambertian * diffuseMap + specular * Specular;
+	vec3 colorLinear = lambertian * diffuseMap + specular * Specular;
 
 	float screenGamma = 2.2;
 	vec3 colorGammaCorrected = pow(colorLinear, vec3(1.0 / screenGamma));
 
 	float visibility = textureProj(ShadowMap, shadowMapCoord);
-	FragColor = vec4(colorGammaCorrected * visibility, 1.0);
+	FragColor = vec4(colorGammaCorrected * visibility +  Ambient * ambientColor, 1.0);
 }

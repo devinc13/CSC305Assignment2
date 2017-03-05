@@ -103,7 +103,7 @@ void Simulation::Init(Scene* scene)
 
 
 	Light mainLight;
-	mainLight.Position = glm::vec3(5.0f);
+	mainLight.Position = glm::vec3(15.0f, 10.0f, 15.0f);
 	glm::vec3 mainLightTarget = glm::vec3(0.0f);
 	mainLight.Direction = normalize(mainLightTarget - mainLight.Position);
 	mainLight.Up = glm::vec3(0.0f, 1.0f, 0.0f);
